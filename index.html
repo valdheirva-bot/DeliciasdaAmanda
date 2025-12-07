@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delícias da Amanda - Cardápio Online</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF CDN para geração de PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        /* Configuração de cores personalizadas do Tailwind */
+        :root {
+            --color-primary: #E91E63; /* Rosa - Doce/Vibrante */
+            --color-secondary: #FFCC80; /* Pêssego/Amanteigado */
+            --color-bg: #FFF8E1; /* Creme Claro */
+        }
+        .bg-primary { background-color: var(--color-primary); }
+        .text-primary { color: var(--color-primary); }
+        .border-primary { border-color: var(--color-primary); }
+        .hover\:bg-primary-dark:hover { background-color: #D81B60; }
+        .bg-secondary { background-color: var(--color-secondary); }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg);
+        }
+
+        /* Estilo para o botão do carrinho (flutuante) */
+        #cart-button {
+            transition: transform 0.3s ease-in-out;
+        }
+        #cart-button.hidden {
+            transform: translateX(150%);
+        }
+
+        /* Estilo para a barra lateral do carrinho */
+        #cart-sidebar {
+            transition: transform 0.3s ease-in-out;
+            z-index: 50; /* Garante que fique acima de outros elementos */
+        }
+
+        /* Classes para ícones (usando SVG genérico para ilustração) */
+        .icon {
+            display: inline-block;
+            width: 1.25rem;
+            height: 1.25rem;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div id="app" class="relative">
+
+        <!-- 4.1 Cabeçalho (Header) -->
+        <header class="sticky top-0 bg-white shadow-md z-40">
+            <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <!-- Logo (simulado) -->
+                    <svg class="w-8 h-8 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 2a8 8 0 100 16A8 8 0 0010 2zm0 14.5A6.5 6.5 0 1110 3a6.5 6.5 0 010 13.5zM10 11a1 1 0 100-2 1 1 0 000 2z"/>
+                        <circle cx="10" cy="10" r="1" fill="white"/>
+                    </svg>
+                    <!-- Nome da marca -->
+                    <h1 class="text-xl font-bold text-gray-800">“Delícias da Amanda — o sabor que faz você voltar!”</h1>
+                </div>
+                <!-- Opções de navegação -->
+                <nav class="hidden md:flex space-x-6 text-gray-600 font-medium">
+                    <a href="#inicio" class="hover:text-primary">Início</a>
+                    <a href="#cardapio" class="hover:text-primary">Cardápio</a>
+                    <a href="#contato" class="hover:text-primary">Contato</a>
+                    <button onclick="toggleCartSidebar(true)" class="text-primary flex items-center hover:text-primary-dark">
+                        Fazer Pedido
+                        <svg class="w-5 h-5 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </button>
+                </nav>
+                <!-- Menu mobile / Botão do carrinho -->
+                <button onclick="toggleCartSidebar(true)" class="md:hidden p-2 rounded-full bg-primary text-white flex items-center space-x-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span id="cart-count-mobile" class="text-xs font-bold">0</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 max-w-7xl">
+            <!-- 4.2 Seção de Boas-Vindas -->
+            <section id="inicio" class="mb-12 p-8 bg-secondary rounded-xl shadow-lg flex flex-col md:flex-row items-center justify-between">
+                <div class="md:w-1/2">
+                    <h2 class="text-4xl font-extrabold text-gray-800 mb-4">Bem-vindo(a) ao Delícias da Amanda!</h2>
+                    <p class="text-gray-700 mb-6 text-lg">"Sabor caseiro que toca o coração e transforma cada mordida em um momento especial."</p>
+                    <!-- Chamada para Ação -->
+                    <a href="#cardapio" class="bg-primary text-white font-bold py-3 px-6 rounded-full shadow-lg hover:bg-primary-dark transition duration-300">
+                        Faça seu pedido agora!
+                    </a>
+                </div>
+                <!-- Imagem Ilustrativa -->
+                <div class="md:w-1/3 mt-6 md:mt-0 flex justify-center">
+                    <img src="https://placehold.co/250x250/FFCC80/E91E63?text=Sabor" alt="Imagem ilustrativa de doces" class="rounded-full shadow-xl">
+                </div>
+            </section>
+
+            <!-- 4.3 Categorias e 4.4 Produtos -->
+            <section id="cardapio" class="mb-12">
+                <h2 class="text-3xl font-extrabold text-gray-800 mb-6 border-b-4 border-primary inline-block pb-1">Cardápio Delicioso</h2>
+
+                <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Produtos serão renderizados aqui pelo JavaScript -->
+                </div>
+            </section>
+
+             <!-- 4.6 Tela de Finalização do Pedido (Estrutura oculta/modal) -->
+             <section id="checkout-section" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+                <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-md m-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-2xl font-bold text-gray-800">Finalizar Pedido</h3>
+                        <button onclick="closeCheckout()" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                    </div>
+
+                    <div id="checkout-summary" class="bg-gray-50 p-3 rounded-lg mb-4">
+                        <p class="font-semibold text-sm">Itens: <span id="summary-items"></span></p>
+                        <p class="font-extrabold text-lg text-primary">Total: <span id="summary-total"></span></p>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Campos de Finalização -->
+                        <div>
+                            <label for="client-name" class="block text-sm font-medium text-gray-700">Nome do Cliente</label>
+                            <input type="text" id="client-name" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary" placeholder="Seu nome completo" required>
+                        </div>
+                        <div>
+                            <label for="client-address" class="block text-sm font-medium text-gray-700">Endereço (Opcional para entrega)</label>
+                            <input type="text" id="client-address" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary" placeholder="Rua, número, bairro">
+                        </div>
+                        <div>
+                            <label for="client-notes" class="block text-sm font-medium text-gray-700">Observações do pedido</label>
+                            <textarea id="client-notes" rows="2" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary" placeholder="Ex: Sem cebola, embalar para presente."></textarea>
+                        </div>
+                        <div>
+                            <label for="payment-method" class="block text-sm font-medium text-gray-700">Método de Pagamento</label>
+                            <select id="payment-method" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-primary focus:border-primary">
+                                <option value="Pix">Pix</option>
+                                <option value="Cartão">Cartão (Crédito/Débito)</option>
+                                <option value="Dinheiro">Dinheiro</option>
+                            </select>
+                        </div>
+
+                        <!-- Botões de Ação -->
+                        <div class="flex flex-col space-y-2 pt-2">
+                            <button onclick="generateAndSavePDF()" class="bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2v5h-16v-5h2m0-6h14m-12 5h10V9H7v7zm-5-1v5a2 2 0 002 2h16a2 2 0 002-2v-5M7 1v4m10-4v4"></path></svg>
+                                <span>Salvar Pedido como PDF</span>
+                            </button>
+                            <button onclick="sendOrderViaWhatsApp()" class="bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition duration-300 flex items-center justify-center space-x-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9v6a2 2 0 01-2 2H9a2 2 0 01-2-2V9m14-1H3a2 2 0 00-2 2v10a2 2 0 002 2h18a2 2 0 002-2V9a2 2 0 00-2-2zM10 5h4"></path></svg>
+                                <span>Enviar Pedido via WhatsApp</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+        </main>
+
+        <!-- 4.5 Carrinho de Compras (Sidebar Flutuante) -->
+        <div id="cart-sidebar" class="fixed right-0 top-0 h-full w-full max-w-sm bg-white shadow-2xl transform translate-x-full pt-16 z-50 flex flex-col">
+            <div class="p-4 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800">Seu Pedido</h3>
+                <button onclick="toggleCartSidebar(false)" class="text-gray-500 hover:text-gray-800 text-2xl p-1 rounded-full hover:bg-gray-100">&times;</button>
+            </div>
+
+            <div id="cart-items-container" class="flex-grow overflow-y-auto p-4 space-y-4">
+                <!-- Itens do Carrinho serão renderizados aqui -->
+            </div>
+
+            <div id="cart-footer" class="p-4 border-t border-gray-200 sticky bottom-0 bg-white">
+                <div class="flex justify-between items-center mb-3">
+                    <span class="text-lg font-semibold text-gray-700">Total:</span>
+                    <span id="cart-total" class="text-2xl font-extrabold text-primary">R$ 0,00</span>
+                </div>
+                <button onclick="openCheckout()" id="checkout-button" class="w-full bg-primary text-white font-bold py-3 rounded-lg shadow-lg hover:bg-primary-dark transition duration-300 disabled:opacity-50" disabled>
+                    Finalizar Pedido
+                </button>
+                <div id="cart-empty-message" class="text-center text-sm text-gray-500 mt-2 hidden">
+                    Seu carrinho está vazio. Adicione itens do cardápio!
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão Flutuante do Carrinho (Mobile/Desktop) -->
+        <button id="cart-button" onclick="toggleCartSidebar(true)" class="fixed bottom-6 right-6 bg-primary text-white p-4 rounded-full shadow-xl hover:scale-105 transition duration-300 flex items-center space-x-2 z-40">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            <span id="cart-count" class="text-sm font-bold">0</span>
+        </button>
+
+        <!-- Modal de Seleção de Opções -->
+        <div id="options-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+            <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modal-product-name" class="text-xl font-bold text-gray-800"></h3>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button>
+                </div>
+
+                <div id="modal-options-container" class="space-y-3 mb-4">
+                    <!-- Opções de produto (rádio buttons) serão injetadas aqui -->
+                </div>
+
+                <div class="flex items-center justify-between mb-4">
+                    <span class="text-lg font-semibold text-gray-700">Preço:</span>
+                    <span id="modal-price-display" class="text-xl font-extrabold text-primary">R$ 0,00</span>
+                </div>
+
+                <div class="flex items-center justify-center space-x-4 mb-4">
+                    <button onclick="updateQuantity(-1)" class="bg-gray-200 text-gray-800 font-bold p-2 w-10 h-10 rounded-full hover:bg-gray-300 transition duration-150 flex items-center justify-center text-xl disabled:opacity-50" id="btn-qty-minus">-</button>
+                    <input type="number" id="modal-quantity" value="1" min="1" class="w-16 text-center border border-gray-300 rounded-lg p-2 font-bold" onchange="validateQuantity(this)">
+                    <button onclick="updateQuantity(1)" class="bg-gray-200 text-gray-800 font-bold p-2 w-10 h-10 rounded-full hover:bg-gray-300 transition duration-150 flex items-center justify-center text-xl">+</button>
+                </div>
+
+                <button onclick="addItemToCartFromModal()" class="w-full bg-primary text-white font-bold py-3 rounded-lg hover:bg-primary-dark transition duration-300">
+                    Adicionar ao Pedido
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Use a desestruturação para acessar a função jspdf.js:
+        const { jsPDF } = window.jspdf;
+
+        // --- DADOS DO CARDÁPIO (Modelo de Cardápio.pdf) ---
+
+        const PRODUCTS = [
+            {
+                id: 1,
+                category: 'Biscoitos / Doces',
+                name: 'Biscoito Amanteigado (Sequilhos)',
+                description: 'Derrete na boca! Escolha seu sabor favorito.',
+                price: 5.00,
+                image: 'https://placehold.co/300x200/FFCC80/E91E63?text=Biscoito',
+                options: [
+                    { name: 'Tradicional', price: 5.00, default: true },
+                    { name: 'Com Chocolate', price: 6.00 },
+                    { name: 'Com Goiabada', price: 6.00 }
+                ],
+                hasOptions: true
+            },
+            {
+                id: 2,
+                category: 'Lanches',
+                name: 'Lanche de Carne Louca',
+                description: 'Carne desfiada e temperada no pão fresquinho.',
+                price: 8.00,
+                image: 'https://placehold.co/300x200/90A4AE/FFFFFF?text=Carne+Louca',
+                hasOptions: false
+            },
+            {
+                id: 3,
+                category: 'Lanches',
+                name: 'Lanche Natural',
+                description: 'Leve e saboroso. Escolha Atum ou Frango.',
+                price: 9.00,
+                image: 'https://placehold.co/300x200/A5D6A7/FFFFFF?text=Lanche+Natural',
+                options: [
+                    { name: 'Atum', price: 9.00, default: true },
+                    { name: 'Frango', price: 9.00 }
+                ],
+                hasOptions: true
+            },
+            {
+                id: 4,
+                category: 'Lanches',
+                name: 'Lanche de Baguete de Filé de Frango',
+                description: 'Baguete recheada com filé de frango assado.',
+                price: 12.00,
+                image: 'https://placehold.co/300x200/FFAB91/FFFFFF?text=Baguete',
+                hasOptions: false
+            },
+            {
+                id: 5,
+                category: 'Pães Especiais',
+                name: 'Pão Recheado',
+                description: 'Pão caseiro com recheios cremosos. Escolha o seu!',
+                price: 14.00, // Preço base para o modal
+                image: 'https://placehold.co/300x200/FF8A65/FFFFFF?text=Pão+Recheado',
+                options: [
+                    { name: 'Calabresa com Requeijão Cremoso', price: 16.00, default: true },
+                    { name: 'Calabresa', price: 14.00 },
+                    { name: 'Calabresa com Queijo e Requeijão', price: 17.00 }
+                ],
+                hasOptions: true
+            },
+            {
+                id: 6,
+                category: 'Pães Especiais',
+                name: 'Pão Caseirinho',
+                description: 'Pão caseiro, macio e delicioso.',
+                price: 10.00,
+                image: 'https://placehold.co/300x200/FFE082/E91E63?text=Pão+Caseiro',
+                hasOptions: false
+            },
+            {
+                id: 7,
+                category: 'Bebidas',
+                name: 'Refrigerante 200ml',
+                description: 'Refresque-se com seu sabor favorito.',
+                price: 3.50,
+                image: 'https://placehold.co/300x200/64B5F6/FFFFFF?text=Refri',
+                options: [
+                    { name: 'Coca-Cola', price: 3.50, default: true },
+                    { name: 'Guaraná', price: 3.50 },
+                    { name: 'Fanta Laranja', price: 3.50 }
+                ],
+                hasOptions: true
+            },
+        ];
+
+        // --- VARIÁVEIS DE ESTADO E FUNÇÕES GERAIS ---
+
+        let cart = []; // Carrinho de compras
+        let currentModalProduct = null;
+        let currentModalQuantity = 1;
+
+        // Formatação de moeda
+        const formatCurrency = (value) => value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+        /**
+         * Carrega o carrinho do localStorage ao iniciar a aplicação.
+         * O documento pede o uso de localStorage, então estamos seguindo.
+         */
+        const loadCart = () => {
+            try {
+                const storedCart = localStorage.getItem('deliciasAmandaCart');
+                cart = storedCart ? JSON.parse(storedCart) : [];
+            } catch (error) {
+                console.error("Erro ao carregar carrinho do localStorage:", error);
+                cart = [];
+            }
+        };
+
+        /**
+         * Salva o carrinho no localStorage.
+         */
+        const saveCart = () => {
+            try {
+                localStorage.setItem('deliciasAmandaCart', JSON.stringify(cart));
+            } catch (error) {
+                console.error("Erro ao salvar carrinho no localStorage:", error);
+            }
+        };
+
+        /**
+         * Calcula o total do carrinho.
+         */
+        const calculateTotal = () => {
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            return total;
+        };
+
+        // --- RENDERIZAÇÃO DO CARDÁPIO ---
+
+        /**
+         * Renderiza todos os produtos na tela principal, agrupados por categoria.
+         */
+        const renderProducts = () => {
+            const container = document.getElementById('product-list');
+            container.innerHTML = '';
+            const categories = {};
+
+            // Agrupa produtos por categoria
+            PRODUCTS.forEach(product => {
+                if (!categories[product.category]) {
+                    categories[product.category] = [];
+                }
+                categories[product.category].push(product);
+            });
+
+            // Cria o HTML para cada categoria e seus produtos
+            for (const category in categories) {
+                const categoryElement = document.createElement('div');
+                categoryElement.className = 'col-span-1 md:col-span-2 lg:col-span-3 mb-6';
+                categoryElement.innerHTML = `<h3 class="text-2xl font-bold text-gray-700 mb-4 pt-4 border-t border-primary">${category}</h3>`;
+                container.appendChild(categoryElement);
+
+                categories[category].forEach(product => {
+                    const productElement = document.createElement('div');
+                    productElement.className = 'bg-white rounded-xl shadow-md overflow-hidden transform hover:shadow-lg hover:scale-[1.01] transition duration-300';
+                    
+                    // Define o preço a ser exibido (pode ser o preço base ou "A partir de...")
+                    let displayPrice = product.hasOptions ? `A partir de ${formatCurrency(product.price)}` : formatCurrency(product.price);
+                    if (product.hasOptions && product.options.some(opt => opt.price < product.price)) {
+                         // Apenas para garantir que o preço base seja o menor se houver opções
+                         const minPrice = Math.min(...product.options.map(opt => opt.price));
+                         displayPrice = `A partir de ${formatCurrency(minPrice)}`;
+                    } else if (product.hasOptions) {
+                         // Se todos tiverem o mesmo preço base, mostra só o preço base
+                         displayPrice = formatCurrency(product.options[0].price);
+                    } else {
+                        displayPrice = formatCurrency(product.price);
+                    }
+
+
+                    productElement.innerHTML = `
+                        <div class="md:flex">
+                            <div class="md:shrink-0">
+                                <img class="h-48 w-full object-cover md:w-48" src="${product.image}" alt="Imagem de ${product.name}" onerror="this.onerror=null;this.src='https://placehold.co/300x200/808080/FFFFFF?text=Sem+Foto';">
+                            </div>
+                            <div class="p-6 flex flex-col justify-between w-full">
+                                <div>
+                                    <div class="text-xl font-bold text-gray-800">${product.name}</div>
+                                    <p class="mt-1 text-gray-500">${product.description}</p>
+                                </div>
+                                <div class="mt-4 flex justify-between items-center">
+                                    <div class="text-2xl font-extrabold text-primary">${displayPrice}</div>
+                                    <button onclick="handleProductClick(${product.id})" class="bg-primary text-white font-semibold py-2 px-4 rounded-full shadow-md hover:bg-primary-dark transition duration-300 text-sm">
+                                        ${product.hasOptions ? 'Ver Opções' : 'Adicionar ao Pedido'}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(productElement);
+                });
+            }
+        };
+
+        // --- LÓGICA DO MODAL DE OPÇÕES ---
+
+        /**
+         * Abre o modal de opções ou adiciona diretamente ao carrinho.
+         */
+        const handleProductClick = (productId) => {
+            const product = PRODUCTS.find(p => p.id === productId);
+
+            if (product.hasOptions) {
+                openModal(product);
+            } else {
+                // Produto sem opções, adiciona o item diretamente
+                addItemToCart(product.id, product.name, product.price, 1);
+            }
+        };
+
+        /**
+         * Abre e popula o modal de seleção de opções.
+         */
+        const openModal = (product) => {
+            currentModalProduct = product;
+            currentModalQuantity = 1;
+
+            document.getElementById('modal-product-name').textContent = product.name;
+            document.getElementById('modal-quantity').value = 1;
+            document.getElementById('options-modal').classList.remove('hidden');
+
+            const optionsContainer = document.getElementById('modal-options-container');
+            optionsContainer.innerHTML = '';
+
+            // Renderiza as opções
+            product.options.forEach((option, index) => {
+                const optionId = `option-${product.id}-${index}`;
+                const isDefault = option.default || index === 0; // Marca a primeira como padrão
+                
+                const optionElement = document.createElement('label');
+                optionElement.className = 'flex items-center space-x-3 p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition duration-150';
+                optionElement.innerHTML = `
+                    <input type="radio" name="product-option" id="${optionId}" value="${option.name}" data-price="${option.price}" ${isDefault ? 'checked' : ''} onchange="updateModalPrice()" class="text-primary focus:ring-primary h-5 w-5">
+                    <span class="font-medium text-gray-700 flex-grow">${option.name}</span>
+                    <span class="text-primary font-bold">${formatCurrency(option.price)}</span>
+                `;
+                optionsContainer.appendChild(optionElement);
+            });
+
+            // Atualiza o preço inicial do modal
+            updateModalPrice();
+        };
+
+        /**
+         * Fecha o modal de seleção.
+         */
+        const closeModal = () => {
+            document.getElementById('options-modal').classList.add('hidden');
+            currentModalProduct = null;
+        };
+        
+        /**
+         * Atualiza a quantidade do modal.
+         */
+        const updateQuantity = (change) => {
+            let qtyInput = document.getElementById('modal-quantity');
+            let newQty = parseInt(qtyInput.value) + change;
+            if (newQty < 1) newQty = 1;
+            qtyInput.value = newQty;
+            currentModalQuantity = newQty;
+            updateModalPrice();
+        };
+        
+        /**
+         * Garante que a quantidade seja pelo menos 1
+         */
+        const validateQuantity = (input) => {
+            let newQty = parseInt(input.value);
+            if (isNaN(newQty) || newQty < 1) newQty = 1;
+            input.value = newQty;
+            currentModalQuantity = newQty;
+            updateModalPrice();
+        };
+
+        /**
+         * Atualiza o preço total exibido no modal (Preço da Opção * Quantidade).
+         */
+        const updateModalPrice = () => {
+            const selectedOption = document.querySelector('input[name="product-option"]:checked');
+            if (!selectedOption) return;
+
+            const basePrice = parseFloat(selectedOption.dataset.price);
+            const total = basePrice * currentModalQuantity;
+
+            document.getElementById('modal-price-display').textContent = formatCurrency(total);
+        };
+
+        /**
+         * Adiciona o item selecionado no modal ao carrinho.
+         */
+        const addItemToCartFromModal = () => {
+            const selectedOption = document.querySelector('input[name="product-option"]:checked');
+            const quantity = parseInt(document.getElementById('modal-quantity').value);
+
+            if (selectedOption && currentModalProduct && quantity >= 1) {
+                const basePrice = parseFloat(selectedOption.dataset.price);
+                const optionName = selectedOption.value;
+                const itemName = `${currentModalProduct.name} (${optionName})`;
+
+                addItemToCart(currentModalProduct.id, itemName, basePrice, quantity, optionName);
+                closeModal();
+            }
+        };
+
+
+        // --- LÓGICA DO CARRINHO ---
+
+        /**
+         * Adiciona um item ao carrinho ou aumenta a quantidade se já existir.
+         */
+        const addItemToCart = (productId, name, price, quantity, optionName = null) => {
+            const itemIdentifier = optionName ? `${productId}-${optionName}` : `${productId}`;
+            const existingItemIndex = cart.findIndex(item => item.identifier === itemIdentifier);
+
+            if (existingItemIndex > -1) {
+                cart[existingItemIndex].quantity += quantity;
+            } else {
+                cart.push({
+                    identifier: itemIdentifier,
+                    id: productId,
+                    name: name,
+                    price: price,
+                    quantity: quantity,
+                    option: optionName
+                });
+            }
+
+            saveCart();
+            renderCart();
+        };
+        
+        /**
+         * Remove um item do carrinho.
+         */
+        const removeItemFromCart = (identifier) => {
+            cart = cart.filter(item => item.identifier !== identifier);
+            saveCart();
+            renderCart();
+        };
+
+        /**
+         * Atualiza a quantidade de um item no carrinho.
+         */
+        const updateCartItemQuantity = (identifier, change) => {
+            const itemIndex = cart.findIndex(item => item.identifier === identifier);
+
+            if (itemIndex > -1) {
+                cart[itemIndex].quantity += change;
+                if (cart[itemIndex].quantity <= 0) {
+                    cart.splice(itemIndex, 1); // Remove se a quantidade for 0 ou menos
+                }
+            }
+
+            saveCart();
+            renderCart();
+        };
+
+        /**
+         * Renderiza a barra lateral do carrinho e atualiza os totais.
+         */
+        const renderCart = () => {
+            const container = document.getElementById('cart-items-container');
+            container.innerHTML = '';
+            const total = calculateTotal();
+            const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            if (cart.length === 0) {
+                document.getElementById('cart-empty-message').classList.remove('hidden');
+                document.getElementById('checkout-button').disabled = true;
+            } else {
+                document.getElementById('cart-empty-message').classList.add('hidden');
+                document.getElementById('checkout-button').disabled = false;
+                
+                cart.forEach(item => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg shadow-sm';
+                    itemElement.innerHTML = `
+                        <div class="flex-grow">
+                            <p class="font-semibold text-gray-800">${item.name}</p>
+                            <p class="text-sm text-gray-500">${formatCurrency(item.price)} x ${item.quantity} = ${formatCurrency(item.price * item.quantity)}</p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="updateCartItemQuantity('${item.identifier}', -1)" class="text-primary font-bold p-1 hover:bg-primary hover:text-white rounded-full transition duration-150">-</button>
+                            <span class="font-bold">${item.quantity}</span>
+                            <button onclick="updateCartItemQuantity('${item.identifier}', 1)" class="text-primary font-bold p-1 hover:bg-primary hover:text-white rounded-full transition duration-150">+</button>
+                            <button onclick="removeItemFromCart('${item.identifier}')" class="text-red-500 hover:text-red-700 p-1">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                    container.appendChild(itemElement);
+                });
+            }
+
+            // Atualiza os displays de total e contagem
+            document.getElementById('cart-total').textContent = formatCurrency(total);
+            document.getElementById('cart-count').textContent = itemCount;
+            document.getElementById('cart-count-mobile').textContent = itemCount;
+
+            // Esconde/mostra o botão flutuante se a sidebar estiver aberta no mobile
+            const cartButton = document.getElementById('cart-button');
+            const cartSidebar = document.getElementById('cart-sidebar');
+            if (cartSidebar.classList.contains('translate-x-full')) {
+                cartButton.classList.remove('hidden');
+            } else {
+                 cartButton.classList.add('hidden');
+            }
+        };
+        
+        /**
+         * Abre ou fecha a sidebar do carrinho.
+         */
+        const toggleCartSidebar = (open) => {
+            const sidebar = document.getElementById('cart-sidebar');
+            const cartButton = document.getElementById('cart-button');
+
+            if (open) {
+                sidebar.classList.remove('translate-x-full');
+                cartButton.classList.add('hidden');
+            } else {
+                sidebar.classList.add('translate-x-full');
+                cartButton.classList.remove('hidden');
+            }
+        };
+        
+        // --- FINALIZAÇÃO DE PEDIDO (CHECKOUT) ---
+
+        /**
+         * Abre a tela de finalização de pedido.
+         */
+        const openCheckout = () => {
+            if (cart.length === 0) return;
+            
+            const total = calculateTotal();
+            const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+
+            document.getElementById('summary-items').textContent = `${itemCount} item(s)`;
+            document.getElementById('summary-total').textContent = formatCurrency(total);
+            document.getElementById('checkout-section').classList.remove('hidden');
+            toggleCartSidebar(false); // Fecha o carrinho
+        };
+        
+        /**
+         * Fecha a tela de finalização.
+         */
+        const closeCheckout = () => {
+            document.getElementById('checkout-section').classList.add('hidden');
+        };
+
+        // --- FUNCIONALIDADES DE ENVIO/IMPRESSÃO (PDF) ---
+
+        /**
+         * Gera o conteúdo do comprovante em formato de texto para PDF e WhatsApp.
+         */
+        const getOrderReceiptContent = () => {
+            const clientName = document.getElementById('client-name').value || 'Não Informado';
+            const clientAddress = document.getElementById('client-address').value || 'Retirada/Não Informado';
+            const clientNotes = document.getElementById('client-notes').value || 'Nenhuma.';
+            const paymentMethod = document.getElementById('payment-method').value;
+            const total = calculateTotal();
+
+            let receipt = `DELÍCIAS DA AMANDA - PEDIDO\n\n`;
+            receipt += `------------------------------------\n`;
+            receipt += `Cliente: ${clientName}\n`;
+            receipt += `Entrega: ${clientAddress}\n`;
+            receipt += `Pagamento: ${paymentMethod}\n`;
+            receipt += `Obs.: ${clientNotes}\n`;
+            receipt += `------------------------------------\n`;
+            receipt += `ITENS DO PEDIDO:\n`;
+
+            cart.forEach(item => {
+                const subtotal = item.price * item.quantity;
+                receipt += `${item.quantity}x ${item.name} | ${formatCurrency(item.price)} (Sub: ${formatCurrency(subtotal)})\n`;
+            });
+
+            receipt += `------------------------------------\n`;
+            receipt += `TOTAL: ${formatCurrency(total)}\n`;
+            receipt += `------------------------------------\n\n`;
+            receipt += `Delícias da Amanda agradece pela preferência!`;
+
+            return receipt;
+        };
+
+        /**
+         * Gera e salva o pedido como um arquivo PDF (simulando comprovante/filipeta).
+         * Requer a biblioteca jsPDF.
+         */
+        const generateAndSavePDF = () => {
+            if (cart.length === 0) return;
+
+            const doc = new jsPDF({
+                unit: 'mm',
+                format: [80, 200] // Formato de filipeta (80mm largura, 200mm altura - ajustável)
+            });
+
+            const content = getOrderReceiptContent();
+            const lines = content.split('\n');
+            let y = 10;
+            const lineHeight = 5;
+            const maxWidth = 70; // Largura máxima do texto
+
+            doc.setFontSize(10);
+
+            lines.forEach(line => {
+                // Quebra de linha manual para caber na filipeta
+                const textLines = doc.splitTextToSize(line, maxWidth);
+                doc.text(textLines, 5, y);
+                y += textLines.length * lineHeight;
+            });
+
+            // Nome do arquivo
+            const clientName = document.getElementById('client-name').value || 'Cliente';
+            const filename = `Pedido_DeliciasDaAmanda_${clientName.replace(/\s/g, '_')}_${Date.now()}.pdf`;
+            
+            doc.save(filename);
+            
+            // Opcional: Esvaziar carrinho após "imprimir/salvar"
+            // cart = [];
+            // saveCart();
+            // renderCart();
+            // closeCheckout();
+
+            console.log("PDF gerado e salvo com sucesso!");
+        };
+
+        /**
+         * Envia o pedido formatado via WhatsApp (simulação, abre o link).
+         */
+        const sendOrderViaWhatsApp = () => {
+            if (cart.length === 0) return;
+
+            const receiptText = getOrderReceiptContent();
+            // O número de telefone precisa ser configurável; usando um placeholder
+            const phoneNumber = '5511986511287'; 
+            
+            // Cria o link do WhatsApp com o texto do pedido codificado
+            const whatsappLink = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(receiptText)}`;
+            
+            window.open(whatsappLink, '_blank');
+            
+            // Opcional: Esvaziar carrinho após envio (depende da regra de negócio)
+            // cart = [];
+            // saveCart();
+            // renderCart();
+            // closeCheckout();
+        };
+
+
+        // --- INICIALIZAÇÃO ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadCart();
+            renderProducts();
+            renderCart();
+            
+            // Define o primeiro item de Biscoito como padrão para o primeiro render do modal se necessário
+            const biscoito = PRODUCTS.find(p => p.id === 1);
+            if(biscoito && biscoito.options.length > 0) {
+                 biscoito.options[0].default = true;
+            }
+        });
+    </script>
+</body>
+</html>
